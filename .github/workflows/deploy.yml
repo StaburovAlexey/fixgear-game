@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euxo pipefail
           npm ci
-          npm run npm run build:dev
+          npm run build:dev
           test -d dist
           ls -la dist
 
