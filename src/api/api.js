@@ -4,7 +4,7 @@ const defaultHeaders = {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${apiBaseUrl}/api${path}`, {
     ...options,
     headers: {
       ...defaultHeaders,

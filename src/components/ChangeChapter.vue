@@ -74,7 +74,7 @@
     {
       chapter_id: 1,
       title: 'Заезд',
-      media: 'https://media.giphy.com/media/13HgwGsXF0aiGY/giphy.gif',
+      media: '/chart_1.gif',
       mode: 1,
       active: true,
     },
