@@ -1,5 +1,24 @@
-# Vue 3 + Vite
+# FixGear Game — пет‑проект на Pixi.js
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+**Поиграть:** [t.me/dev_fgr_bout_bot?startapp](https://t.me/dev_fgr_bout_bot?startapp) — уже зашло ~20 человек.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+Небольшая игра, которую я веду в свободное время, чтобы прокачивать Pixi.js, Vue 3 и Telegram Web Apps.
+
+## Что внутри
+- Рендер сцены и анимации в Pixi.js, UI на Vue 3.
+- Telegram Web App: берем `initData` для аутентификации и привязываем результаты к пользователю.
+- Лидерборды: очки по главам/режимам отправляются на сервер, строится таблица лидеров и сохраняется прогресс.
+
+## Как развивался проект
+- Стартовал как фронт на Vue 3 + Vite с моковыми данными.
+- Добавил Pixi.js, чтобы отделить канвас‑графику от UI.
+- Подключил Telegram WebApp SDK для работы с `initData`.
+- Первая версия бэкенда была на Supabase (users/scores).
+- Вынес сервер в отдельный Fastify + SQLite проект с проверкой подписи Telegram: [server-fgr-bout](https://github.com/StaburovAlexey/server-fgr-bout).
+- Переписал фронт на REST эндпоинты нового сервера (auth, users, scores, лидерборды), оставив модель данных прежней.
+
+## Стек
+- Frontend: Vue 3 (`<script setup>`), Vite, Pixi.js.
+- Backend: Fastify + SQLite — репозиторий: [server-fgr-bout](https://github.com/StaburovAlexey/server-fgr-bout).
+- Интеграции: Telegram Web Apps `initData`, PM2/nginx для деплоя.
+
