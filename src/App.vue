@@ -68,16 +68,26 @@
 
   async function gameOver(gStatus, score) {
     isSurpassed.value = false
-    const userScore = userScoreForChapterAndMode(
-      gameChapter.value.chapter_id,
-      gameChapter.value.mode
-    )?.score
-    if (!userScore || userScore < Math.floor(score)) {
-      await updateScores(gameChapter.value.chapter_id, gameChapter.value.mode, Math.floor(score))
+    const chapterId = gameChapter.value.chapter_id
+    const modeId = gameChapter.value.mode
+    const normalizedScore = Math.floor(score)
 
-      isSurpassed.value = true
+    try {
+      const userScore = userScoreForChapterAndMode(chapterId, modeId)?.score
+      if (user.value?.uuid && (!userScore || userScore < normalizedScore)) {
+        await updateScores(chapterId, modeId, normalizedScore)
+        isSurpassed.value = true
+      }
+    } catch (error) {
+      console.error('Не удалось сохранить результат', error)
     }
-    await updateLeaderboard(gameChapter.value.chapter_id, gameChapter.value.mode)
+
+    try {
+      await updateLeaderboard(chapterId, modeId)
+    } catch (error) {
+      console.error('Не удалось обновить таблицу лидеров', error)
+    }
+
     gameStatus.value = gStatus
   }
 
