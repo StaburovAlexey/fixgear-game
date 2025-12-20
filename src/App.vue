@@ -37,15 +37,18 @@
   onMounted(async () => {
     gameStatus.value = 'Loading-menu' // или 'Loading-menu', если нужно показать загрузку
     const tg = window.Telegram?.WebApp
-    const telegram_id = tg?.initDataUnsafe?.user?.id || 807148322
-    const username = tg?.initDataUnsafe?.user?.username || 'gilbertfrost'
+    const initData = tg?.initData || import.meta.env.VITE_DEV_INIT_DATA
 
     tg?.ready()
     tg?.expand()
-    tg.BackButton?.hide()
+    tg?.BackButton?.hide()
 
     await preloadAssets()
-    await getUser({ telegram_id, username })
+    try {
+      await getUser(initData)
+    } catch (error) {
+      console.error('Не удалось инициализировать пользователя', error)
+    }
 
     gameStatus.value = 'Main-menu'
 
@@ -65,16 +68,26 @@
 
   async function gameOver(gStatus, score) {
     isSurpassed.value = false
-    const userScore = userScoreForChapterAndMode(
-      gameChapter.value.chapter_id,
-      gameChapter.value.mode
-    )?.score
-    if (!userScore || userScore < Math.floor(score)) {
-      await updateScores(gameChapter.value.chapter_id, gameChapter.value.mode, Math.floor(score))
+    const chapterId = gameChapter.value.chapter_id
+    const modeId = gameChapter.value.mode
+    const normalizedScore = Math.floor(score)
 
-      isSurpassed.value = true
+    try {
+      const userScore = userScoreForChapterAndMode(chapterId, modeId)?.score
+      if (user.value?.uuid && (!userScore || userScore < normalizedScore)) {
+        await updateScores(chapterId, modeId, normalizedScore)
+        isSurpassed.value = true
+      }
+    } catch (error) {
+      console.error('Не удалось сохранить результат', error)
     }
-    await updateLeaderboard(gameChapter.value.chapter_id, gameChapter.value.mode)
+
+    try {
+      await updateLeaderboard(chapterId, modeId)
+    } catch (error) {
+      console.error('Не удалось обновить таблицу лидеров', error)
+    }
+
     gameStatus.value = gStatus
   }
 
@@ -96,7 +109,7 @@
       v-if="currentComponent"
       :game-status="gameStatus"
       :game-chapter="gameChapter"
-      :user-id="user?.id"
+      :user-id="user?.uuid"
       :is-surpassed="isSurpassed"
       @exit-menu="gameStatus = 'Main-menu'"
       @start-game="gameStatus = 'Start-game'"
