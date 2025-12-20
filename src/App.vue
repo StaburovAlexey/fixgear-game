@@ -37,15 +37,18 @@
   onMounted(async () => {
     gameStatus.value = 'Loading-menu' // или 'Loading-menu', если нужно показать загрузку
     const tg = window.Telegram?.WebApp
-    const telegram_id = tg?.initDataUnsafe?.user?.id || 807148322
-    const username = tg?.initDataUnsafe?.user?.username || 'gilbertfrost'
+    const initData = tg?.initData || import.meta.env.VITE_DEV_INIT_DATA
 
     tg?.ready()
     tg?.expand()
-    tg.BackButton?.hide()
+    tg?.BackButton?.hide()
 
     await preloadAssets()
-    await getUser({ telegram_id, username })
+    try {
+      await getUser(initData)
+    } catch (error) {
+      console.error('Не удалось инициализировать пользователя', error)
+    }
 
     gameStatus.value = 'Main-menu'
 
@@ -96,7 +99,7 @@
       v-if="currentComponent"
       :game-status="gameStatus"
       :game-chapter="gameChapter"
-      :user-id="user?.id"
+      :user-id="user?.uuid"
       :is-surpassed="isSurpassed"
       @exit-menu="gameStatus = 'Main-menu'"
       @start-game="gameStatus = 'Start-game'"

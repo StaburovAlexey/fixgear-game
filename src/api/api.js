@@ -1,112 +1,70 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = import.meta.env.VITE_API_URL
-const supabaseKey = import.meta.env.VITE_API_KEY
-const usersTable = import.meta.env.VITE_USERS_TABLE
-const scoresTable = import.meta.env.VITE_SCORES_TABLE
-const supabase = createClient(supabaseUrl, supabaseKey)
-
-export async function getOrCreateUserWithScores({ telegram_id, username }) {
-  let user
-
-  // 1. Поиск пользователя по telegram_id
-  const { data: users, error: userError } = await supabase
-    .from(usersTable)
-    .select('*')
-    .eq('telegram_id', telegram_id)
-    .limit(1)
-
-  if (userError) {
-    throw new Error('Ошибка при получении пользователя: ' + userError.message)
-  }
-
-  if (users && users.length > 0) {
-    user = { ...users[0] }
-  } else {
-    // 2. Если не найден — создать нового
-    const { data: newUser, error: createError } = await supabase
-      .from(usersTable)
-      .insert([{ telegram_id, name: username, alerts: true }])
-      .select()
-      .single()
-
-    if (createError) {
-      throw new Error('Ошибка при создании пользователя: ' + createError.message)
-    }
-
-    user = { ...newUser }
-  }
-
-  // 3. Получить все строки из scores для uuid пользователя
-  const scores = await getScoresByUserUuid(user.uuid)
-
-  return {
-    ...user,
-    scores,
-  }
+const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+const defaultHeaders = {
+  'Content-Type': 'application/json',
 }
-export async function getScoresByUserUuid(uuid) {
-  const { data: scores, error } = await supabase.from(scoresTable).select('*').eq('uuid', uuid)
 
-  if (error) {
-    throw new Error('Ошибка при получении scores по uuid: ' + error.message)
+async function request(path, options = {}) {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...(options.headers || {}),
+    },
+  })
+
+  const isJson = response.headers.get('content-type')?.includes('application/json')
+  const data = isJson ? await response.json() : await response.text()
+
+  if (!response.ok) {
+    const message = typeof data === 'string' ? data : data?.message
+    throw new Error(message || `API error ${response.status}`)
   }
 
-  return scores
+  return data
+}
+
+export async function getOrCreateUserWithScores(initData) {
+  const payload = initData || import.meta.env.VITE_DEV_INIT_DATA
+
+  if (!payload) {
+    throw new Error('Telegram initData is required to authenticate user')
+  }
+
+  return request('/auth/telegram', {
+    method: 'POST',
+    body: JSON.stringify({ initData: payload }),
+  })
+}
+
+export async function getScoresByUserUuid(uuid) {
+  const user = await request(`/users/${uuid}`)
+  return user?.scores || []
 }
 
 export async function upsertScore({ uuid, chapter_id, mode_id, score }) {
-  const { error } = await supabase
-    .from(scoresTable)
-    .upsert([{ uuid, chapter_id, mode_id, score }], {
-      onConflict: ['uuid', 'chapter_id', 'mode_id'],
-    })
-
-  if (error) {
-    throw new Error('Ошибка при upsert score: ' + error.message)
-  }
-  return await getScoresByUserUuid(uuid)
-}
-export async function getScoresByChapterAndMode(chapter_id, mode_id) {
-  const { data, error } = await supabase
-    .from(scoresTable)
-    .select(
-      `
+  return request('/scores', {
+    method: 'PUT',
+    body: JSON.stringify({
       uuid,
       chapter_id,
       mode_id,
       score,
-      ${usersTable} (
-        name,
-        alerts
-      )
-    `
-    )
-    .eq('chapter_id', chapter_id)
-    .eq('mode_id', mode_id)
-    .order('score', { ascending: false })
-
-  if (error) {
-    throw new Error('Ошибка при получении списка score: ' + error.message)
-  }
-
-  // Преобразуем вложенное поле с именем таблицы в поле "user"
-  return data.map((row) => ({
-    ...row,
-    user: row[usersTable],
-  }))
+    }),
+  })
 }
+
+export async function getScoresByChapterAndMode(chapter_id, mode_id) {
+  const query = new URLSearchParams({
+    chapter_id: chapter_id?.toString(),
+    mode_id: mode_id?.toString(),
+  }).toString()
+
+  return request(`/scores?${query}`)
+}
+
 export async function updateUserAlerts(uuid, alerts) {
-  const { data, error } = await supabase
-    .from(usersTable)
-    .update({ alerts })
-    .eq('uuid', uuid)
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error('Ошибка при обновлении alerts: ' + error.message)
-  }
-
-  return data
+  return request(`/users/${uuid}/alerts`, {
+    method: 'PATCH',
+    body: JSON.stringify({ alerts }),
+  })
 }
